@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "WebMcpTest (HTTPS)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/WebMcpTest/bin/Debug/net9.0/WebMcpTest.dll",
+      "cwd": "${workspaceFolder}/WebMcpTest",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "args": [],
+      "preLaunchTask": "build WebMcpTest",
+      "launchSettingsProfile": "https",
+      "launchSettingsFilePath": "${workspaceFolder}/WebMcpTest/Properties/launchSettings.json",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:7020;http://localhost:5133"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+https?://\\S+",
+        "uriFormat": "https://localhost:7020"
+      }
+    }
+  ]
+}
