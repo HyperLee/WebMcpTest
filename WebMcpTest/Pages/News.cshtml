@@ -1,0 +1,177 @@
+@page
+@model NewsPageModel
+@{
+    ViewData["Title"] = Model.Article.Title;
+    ViewData["PageTitle"] = Model.Article.Title;
+    ViewData["PageLanguage"] = "zh-Hant-TW";
+}
+
+<article class="news-page">
+    <script id="news-data" type="application/json">@Html.Raw(Model.SerializedArticle)</script>
+
+    <header class="news-hero">
+        <p class="news-eyebrow">Apple 官方新聞摘要</p>
+        <h1>@Model.Article.Title</h1>
+        <p class="news-summary">@Model.Article.Summary</p>
+        <p class="news-scope">@Model.Article.ScopeNote</p>
+        <dl class="news-meta">
+            <div>
+                <dt>公告日期</dt>
+                <dd>@Model.Article.AnnouncementDate.Replace('-', '/')</dd>
+            </div>
+            <div>
+                <dt>最後核對</dt>
+                <dd>@Model.Article.LastVerifiedDate.Replace('-', '/')</dd>
+            </div>
+        </dl>
+    </header>
+
+    <section aria-labelledby="highlights-heading">
+        <h2 id="highlights-heading">主要亮點</h2>
+        <div class="news-highlight-grid">
+            @foreach (var highlight in Model.Article.Highlights)
+            {
+                <article class="news-card">
+                    <h3>@highlight.Title</h3>
+                    <p>@highlight.Description</p>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section aria-labelledby="comparison-heading">
+        <h2 id="comparison-heading">機型比較</h2>
+        <div class="news-table-scroll" tabindex="0" aria-label="iPhone 18 Pro 系列比較表，可水平捲動">
+            <table class="news-comparison-table">
+                <caption>iPhone 18 Pro 與 iPhone 18 Pro Max 主要規格比較</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">規格</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <th scope="col">@product.Name</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">尺寸</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@product.Dimensions</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">顯示器</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@product.DisplaySizeInches 吋 Super Retina XDR；@product.DisplayResolution；ProMotion 最高 120Hz</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">重量</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@product.WeightGrams g</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">容量</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@string.Join("、", product.StorageOptionsGb.Select(value => value + "GB"))</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">一般使用</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>最高 @product.TypicalUseHours 小時</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">影片播放</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>最高 @product.VideoPlaybackHours 小時</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">串流影片播放</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>最高 @product.StreamedVideoPlaybackHours 小時</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">相機</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@product.CameraSummary</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">晶片</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@product.Chip</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">外觀</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td>@string.Join("、", product.Finishes)</td>
+                        }
+                    </tr>
+                    <tr>
+                        <th scope="row">共同特色</th>
+                        <td colspan="2">
+                            <ul>
+                                @foreach (var feature in Model.Article.SharedFeatures)
+                                {
+                                    <li>@feature</li>
+                                }
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section aria-labelledby="schedule-heading">
+        <h2 id="schedule-heading">重要時程</h2>
+        <dl class="news-schedule">
+            <div>
+                <dt>官方發表</dt>
+                <dd>@Model.Article.AnnouncementDate.Replace('-', '/')</dd>
+            </div>
+            <div>
+                <dt>美國太平洋時間預購開始</dt>
+                <dd>@Model.Article.Release.PreorderDisplay</dd>
+            </div>
+            <div>
+                <dt>官方標示開始供貨</dt>
+                <dd>@Model.Article.Release.AvailabilityStart.Replace('-', '/')</dd>
+            </div>
+        </dl>
+        <p class="news-note">@Model.Article.Release.TimezoneNote</p>
+    </section>
+
+    <section aria-labelledby="links-heading">
+        <h2 id="links-heading">官方資料連結</h2>
+        <ul class="news-link-list">
+            @foreach (var link in Model.Article.OfficialLinks)
+            {
+                <li>
+                    <a href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Label</a>
+                </li>
+            }
+        </ul>
+    </section>
+</article>
+
+@section Scripts {
+    <script src="~/js/news-webmcp.js" asp-append-version="true"></script>
+}
