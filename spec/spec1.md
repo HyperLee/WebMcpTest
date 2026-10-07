@@ -239,7 +239,7 @@ Apple 於 2026/09/09 美國時間發表 iPhone 18 Pro 與 iPhone 18 Pro Max。�
   ```
 
 - `additionalProperties: false` 造成的未定義欄位由 Schema 驗證拒絕；execute 仍須防禦性檢查。
-- `options.signal.aborted === true` 或執行期間收到取消時，回傳：
+- tool callback 收到 `options.signal.aborted === true`，或執行期間收到取消時，其內部取消處理回傳：
 
   ```json
   {
@@ -249,6 +249,8 @@ Apple 於 2026/09/09 美國時間發表 iPhone 18 Pro 與 iPhone 18 Pro Max。�
     }
   }
   ```
+
+- 呼叫端透過 `document.modelContext.executeTool(tool, input, { signal })` 取消時，`executeTool()` 的 Promise 會 reject；呼叫端必須捕捉取消錯誤（通常是 `signal.reason`），不可將該 rejection 當作上方的工具結果物件處理。
 
 - 工具只讀取頁面固定資料，不會因為錯誤而呼叫外部網站或改變頁面狀態。
 
@@ -295,7 +297,8 @@ Apple 於 2026/09/09 美國時間發表 iPhone 18 Pro 與 iPhone 18 Pro Max。�
 - 支援 WebMCP 的安全內容環境中，`document.modelContext.getTools()` 可取得且只包含兩個本頁 tools。
 - `get-iphone18-pro-overview` 可分別執行省略參數、`all`、`iphone-18-pro`、`iphone-18-pro-max`。
 - `compare-iphone18-pro-models` 可用 `{}` 執行並回傳兩款機型。
-- 無效 `model`、額外輸入欄位與 `AbortSignal` 取消都符合第 6.4 節契約。
+- 無效 `model` 與額外輸入欄位仍回傳既有錯誤碼。
+- 呼叫前已取消，以及 `executeTool()` 呼叫發出後、Promise 尚待處理時取消，都驗證呼叫端 Promise reject；不驗證 `{ error: { code: "aborted" } }` 取消結果物件。
 - 不支援 `document.modelContext` 或使用非安全內容時，頁面仍可閱讀，且不產生阻塞式錯誤。
 - 工具註冊與執行不會發出 Apple 外部請求、不修改 DOM 以外的應用狀態、不寫入資料庫，也不執行購買或導覽動作。
 

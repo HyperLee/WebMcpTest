@@ -191,16 +191,16 @@ WebMCP 讓支援的 AI agent 以結構化方式呼叫網頁提供的功能。這
 4. 若資料元素不存在或 JSON 無法解析，只記錄 **console.warn** 並結束。
 5. 建立兩個 tool 的 Schema、annotation 與 **execute**。
 6. 以目前介面的 **execute(inputObject, options)** 形式接收輸入。
-7. 從 **options.signal** 監聽取消，避免已取消的 agent request 繼續回傳正常結果。
+7. 從 tool callback 的 **options.signal** 監聽取消，避免工具內部繼續產生正常結果。
 8. 分別呼叫 **document.modelContext.registerTool()**。
 
-工具執行期間的錯誤回傳如下：
+工具 callback 內部的錯誤回傳如下。若呼叫端透過 **executeTool(..., { signal })** 取消，**executeTool()** 的 Promise 會 reject；呼叫端應捕捉取消錯誤（通常是 **signal.reason**），不要把它當作工具結果解析。
 
 | 情境 | **error.code** | 說明 |
 | --- | --- | --- |
 | **model** 不是允許值 | **invalid_model** | 只接受 **all**、**iphone-18-pro**、**iphone-18-pro-max** |
 | 輸入不是物件或包含額外欄位 | **invalid_input** | 防禦性檢查補足 Schema 驗證 |
-| **AbortSignal** 已取消或執行中收到取消 | **aborted** | 回傳「工具執行已取消」 |
+| 工具 callback 內部的 **AbortSignal** 已取消或執行中收到取消 | **aborted** | callback 內部回傳「工具執行已取消」錯誤物件 |
 | tool 執行發生未預期例外 | **execution_failed** | 記錄診斷訊息並回傳一般化錯誤 |
 
 回傳前會複製陣列與物件，避免 agent 修改結果時意外改變頁面內嵌的原始資料。
@@ -267,7 +267,7 @@ tools.map((tool) => tool.name);
 ]
 ```
 
-`getTools()` 回傳的是已註冊工具描述，不是原始註冊物件，因此應使用 `document.modelContext.executeTool()` 執行，不要直接呼叫 `overview.execute()`。目前 Chrome 的執行介面要求第二個參數傳入 JSON 字串；頁面內的 tool `execute(inputObject, options)` 仍會收到解析後的物件。
+`getTools()` 回傳的是已註冊工具描述，不是原始註冊物件，因此應使用 `document.modelContext.executeTool()` 執行，不要直接呼叫 `overview.execute()`。Chrome 文件目前以 JavaScript 物件作為輸入範例，並註明 JSON 字串輸入將於 Chrome 155 淘汰；頁面內的 tool `execute(inputObject, options)` 會收到物件。
 
 可用下列方式驗證實際執行與回傳內容：
 
@@ -278,13 +278,13 @@ const parseToolResult = (raw) => typeof raw === "string" ? JSON.parse(raw) : raw
 
 const overviewResult = parseToolResult(await document.modelContext.executeTool(
   overview,
-  JSON.stringify({ model: "iphone-18-pro" })
+  { model: "iphone-18-pro" }
 ));
 overviewResult;
 
 const comparisonResult = parseToolResult(await document.modelContext.executeTool(
   comparison,
-  JSON.stringify({})
+  {}
 ));
 comparisonResult;
 ```
@@ -296,27 +296,43 @@ comparisonResult;
 ```javascript
 const invalidModelResult = parseToolResult(await document.modelContext.executeTool(
   overview,
-  JSON.stringify({ model: "unknown" })
+  { model: "unknown" }
 ));
 invalidModelResult.error.code; // "invalid_model"
 
 const invalidInputResult = parseToolResult(await document.modelContext.executeTool(
   comparison,
-  JSON.stringify({ unexpected: true })
+  { unexpected: true }
 ));
 invalidInputResult.error.code; // "invalid_input"
 
-const controller = new AbortController();
-controller.abort();
-const abortedResult = parseToolResult(await document.modelContext.executeTool(
+const preAbortedController = new AbortController();
+preAbortedController.abort();
+let preAbortedReason;
+try {
+  await document.modelContext.executeTool(overview, {}, { signal: preAbortedController.signal });
+} catch (error) {
+  preAbortedReason = error;
+}
+preAbortedReason === preAbortedController.signal.reason; // true
+
+const runningController = new AbortController();
+const runningExecution = document.modelContext.executeTool(
   overview,
-  JSON.stringify({}),
-  { signal: controller.signal }
-));
-abortedResult.error.code; // "aborted"
+  {},
+  { signal: runningController.signal }
+);
+runningController.abort();
+let runningAbortReason;
+try {
+  await runningExecution;
+} catch (error) {
+  runningAbortReason = error;
+}
+runningAbortReason === runningController.signal.reason; // true
 ```
 
-最後一個呼叫預期回傳 **error.code === "aborted"**；無效輸入應回傳 **invalid_model** 或 **invalid_input**。若 `document.modelContext` 為 `undefined`，先確認瀏覽器已啟用 WebMCP 支援；這是能力偵測的預期結果，頁面本身仍應可以閱讀。
+取消驗收分別涵蓋呼叫前已取消，以及 **executeTool()** 呼叫發出後、Promise 尚待處理時取消；兩者都應 reject，並由呼叫端捕捉 **signal.reason**，不應預期取得 **error.code === "aborted"** 的工具結果物件。無效輸入仍應回傳 **invalid_model** 或 **invalid_input**。若 `document.modelContext` 為 `undefined`，先確認瀏覽器已啟用 WebMCP 支援；這是能力偵測的預期結果，頁面本身仍應可以閱讀。
 
 ## 專案結構
 
