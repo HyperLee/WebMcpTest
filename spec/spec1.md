@@ -7,7 +7,7 @@
 | 文件用途 | 定義 iPhone 18 Pro News 單頁與 WebMCP 工具的實作契約 |
 | 規格版本 | 1.0 |
 | 規格日期 | 2026-09-10 |
-| 目標專案 | `WebMcpTest`，ASP.NET Core Razor Pages，`net9.0` |
+| 目標專案 | `WebMcpTest`，ASP.NET Core Razor Pages，`net10.0` |
 | 主要路由 | `/News` |
 | 頁面語言 | 繁體中文（`zh-Hant-TW`） |
 | 資料策略 | 固定、人工核對的 Apple 官方資料；不在頁面載入時抓取外部資料 |

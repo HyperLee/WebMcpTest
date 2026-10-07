@@ -1,6 +1,6 @@
 # WebMcpTest
 
-WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 9 建立的 WebMCP 示範專案。專案目前以 **/News** 頁面呈現固定的 iPhone 18 Pro 系列新聞資料，並將相同資料以兩個唯讀 WebMCP tool 暴露給支援 WebMCP 的 AI agent 使用。
+WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 10 建立的 WebMCP 示範專案。專案目前以 **/News** 頁面呈現固定的 iPhone 18 Pro 系列新聞資料，並將相同資料以兩個唯讀 WebMCP tool 暴露給支援 WebMCP 的 AI agent 使用。
 
 本專案的重點不是建立後端 MCP server，而是示範「網頁本身如何提供可被 agent 呼叫的工具」：
 
@@ -24,7 +24,7 @@ WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 9 建立的 WebMCP 示
 
 ### 環境需求
 
-- .NET 9 SDK
+- .NET 10 SDK
 - 支援 HTTPS 的瀏覽器
 - 若要實際測試 WebMCP，需使用支援 **document.modelContext** 的瀏覽器或 agent host。
 
@@ -348,7 +348,7 @@ runningAbortReason === runningController.signal.reason; // true
 │  │  └─ js/
 │  │     └─ news-webmcp.js    # WebMCP 能力偵測、tool 註冊與 execute
 │  ├─ Program.cs              # ASP.NET Core 啟動設定
-│  └─ WebMcpTest.csproj       # .NET 9 Razor Pages 專案
+│  └─ WebMcpTest.csproj       # .NET 10 Razor Pages 專案
 ├─ spec/
 │  └─ spec1.md                # News 與 WebMCP 功能規格
 ├─ docs/

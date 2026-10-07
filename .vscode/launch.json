@@ -5,7 +5,7 @@
       "name": "WebMcpTest (HTTPS)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/WebMcpTest/bin/Debug/net9.0/WebMcpTest.dll",
+      "program": "${workspaceFolder}/WebMcpTest/bin/Debug/net10.0/WebMcpTest.dll",
       "cwd": "${workspaceFolder}/WebMcpTest",
       "stopAtEntry": false,
       "console": "internalConsole",

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `WebMcpTest/` is the ASP.NET Core Razor Pages application targeting .NET 9. `Pages/` contains `.cshtml` pages and PageModels; `Pages/Shared/` contains shared layouts and partials; `wwwroot/` contains CSS, JavaScript, and vendor assets. `Program.cs` configures startup, while `appsettings*.json` contains runtime configuration.
+- `WebMcpTest/` is the ASP.NET Core Razor Pages application targeting .NET 10. `Pages/` contains `.cshtml` pages and PageModels; `Pages/Shared/` contains shared layouts and partials; `wwwroot/` contains CSS, JavaScript, and vendor assets. `Program.cs` configures startup, while `appsettings*.json` contains runtime configuration.
 - `spec/` stores product and acceptance requirements. `docs/` stores templates and implementation plans.
 - No dedicated automated test project is currently checked in.
 
