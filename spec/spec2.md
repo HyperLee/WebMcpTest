@@ -1,10 +1,10 @@
-# iPhone 18 Pro 自訂規格比較 WebMCP 開發規格書
+# iPhone 18 Pro 與 iPhone Duo 自訂規格比較 WebMCP 開發規格書
 
 ## 1. 文件資訊
 
 | 項目 | 說明 |
 | --- | --- |
-| 規格版本 | 1.1 |
+| 規格版本 | 1.2 |
 | 規格日期 | 2026-11-14 |
 | 目標專案 | `WebMcpTest`，ASP.NET Core Razor Pages，`net10.0` |
 | 路由 | `/News` |
@@ -13,7 +13,7 @@
 
 ## 2. 需求背景與範圍
 
-使用者可在 `/News` 選擇想比較的機型與規格，也可請支援 WebMCP 的 agent 套用同一組選擇。查詢用途仍由 `get-iphone18-pro-overview` 與 `compare-iphone18-pro-models` 提供，兩個工具的輸入與回傳契約沿用基礎規格，回傳範圍獨立於比較表的顯示設定。
+使用者可在 `/News` 選擇想比較的機型與規格，也可請支援 WebMCP 的 agent 套用同一組選擇。查詢用途仍由 `get-iphone18-pro-overview` 與 `compare-iphone18-pro-models` 提供，兩個工具的輸入與回傳契約沿用基礎規格，回傳範圍維持 Pro 系列並獨立於比較表的顯示設定。iPhone Duo 的摘要與跨系列比較由第 4.4 節的工具提供。
 
 本規格補充基礎規格第 3.2 節的工具副作用限制，允許新增工具更新目前頁面的比較表、對應控制項與狀態訊息。資料沿用 Razor PageModel 提供的固定新聞資料，顯示設定只放在目前頁面的記憶體。條件推薦、外觀與容量預覽、購買流程、外部請求、後端 API 與設定保存皆在本期範圍之外。
 
@@ -21,10 +21,10 @@
 
 ### 3.1 顯示與操作
 
-- 初次開啟或重新整理頁面時，顯示兩款機型與全部規格。比較表保留語意化 HTML 表格、表格標題、列欄標頭及窄版水平捲動。
+- 初次開啟或重新整理頁面時，顯示三款機型與全部規格。比較表保留語意化 HTML 表格、表格標題、列欄標頭及窄版水平捲動。
 - 在表格前提供「機型」和「規格」兩組有標籤的核取方塊，以及「顯示完整規格」按鈕。每組至少保留一項，停用取消該組最後一項的操作。按下按鈕後恢復全部選項。
 - 手動控制與 WebMCP 共用同一套顯示邏輯。每次套用同步更新核取方塊、停用狀態、可見欄列與 `aria-live="polite"` 狀態區。狀態區顯示實際可見的機型與規格數量。
-- 先顯示 iPhone 18 Pro，再顯示 iPhone 18 Pro Max。單機型模式下，欄標頭與對應資料欄一併隱藏。若顯示「共同特色」，其內容儲存格的 `colspan` 等於可見機型數。
+- 依 iPhone 18 Pro、iPhone 18 Pro Max、iPhone Duo 排列。單機型模式下，欄標頭與對應資料欄一併隱藏。若顯示「共同特色」，其內容儲存格的 `colspan` 等於可見機型數。
 - 頁面操作初始化與 WebMCP 註冊各自判斷所需能力。支援 JavaScript 時可使用手動控制。缺少 WebMCP 或工具註冊失敗時，手動控制仍可用。JavaScript 停用時顯示完整比較表，互動控制維持隱藏。
 
 ### 3.2 規格識別碼與顯示順序
@@ -51,8 +51,8 @@
 | 項目 | 契約 |
 | --- | --- |
 | `name` | `set-iphone18-comparison-view` |
-| `title` | 自訂 iPhone 18 Pro 規格比較畫面 |
-| `description` | 更新目前頁面比較表所顯示的機型與規格。省略任一欄位會顯示該組全部選項，傳入空物件可恢復完整比較表。 |
+| `title` | 自訂 iPhone 18 Pro、Pro Max 與 Duo 比較畫面 |
+| `description` | 更新目前比較表顯示的機型與規格，可選 iPhone 18 Pro、Pro Max 與 Duo。省略任一欄位會顯示該組全部選項，傳入空物件可恢復完整比較表。 |
 | `readOnlyHint` | `false` |
 | `consequentialHint` | `false` |
 | `untrustedContentHint` | `false` |
@@ -69,12 +69,12 @@
   "properties": {
     "models": {
       "type": "array",
-      "description": "畫面要顯示的機型。省略時顯示兩款。",
+      "description": "畫面要顯示的機型。省略時顯示三款。",
       "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "enum": ["iphone-18-pro", "iphone-18-pro-max"]
+        "enum": ["iphone-18-pro", "iphone-18-pro-max", "iphone-duo"]
       }
     },
     "criteria": {
@@ -115,7 +115,7 @@
 
 ```json
 {
-  "models": ["iphone-18-pro", "iphone-18-pro-max"],
+  "models": ["iphone-18-pro", "iphone-18-pro-max", "iphone-duo"],
   "criteria": ["weightGrams", "videoPlaybackHours"]
 }
 ```
@@ -126,21 +126,28 @@
 - 驗證與正規化須在修改畫面之前完成。套用前檢查 `options.signal`，若已取消，callback 回傳 `{"error":{"code":"aborted","message":"工具執行已取消。"}}`。合法設定在同一次同步更新內套用，結果以套用完成的狀態為準。
 - 呼叫端使用帶 `signal` 的 `executeTool()` 取消時，依基礎規格處理 Promise rejection。驗收取消案例須在設定套用之前觸發取消，並核對畫面。
 
+### 4.4 Duo 摘要與三款規格查詢
+
+- `get-iphone-duo-overview` 接受空物件，回傳 `type: "iphone-duo-overview"`、`announcementDate`、`lastVerifiedDate`、`summary`、`highlights`、`release`、`models` 與 `officialLinks`。上市時程以 Apple 台灣為準。
+- `compare-iphone-models` 接受空物件或含 `models` 的物件。其 `models` Schema 與 §4.1 相同，省略時查詢三款。回傳 `type: "iphone-comparison"`、`criteria`、依表格順序排列的 `models`、三款的 `sharedFeatures` 與 `officialLinks`。`criteria` 為 §3.2 的識別碼。
+- 兩個工具為唯讀，使用相同的輸入驗證和取消約定。Duo 的 `displays` 依 `inner`、`outer` 排列，各自提供尺寸、解析度、影片播放與串流時間。同期資料取自 [Apple 台灣產品頁](https://www.apple.com/tw/iphone-duo/) 與 [技術規格](https://www.apple.com/tw/iphone-duo/specs/)。
+
 ## 5. 驗收與測試
 
 | 情境 | 預期結果 |
 | --- | --- |
-| 執行 `dotnet build WebMcpTest/WebMcpTest.csproj`，以瀏覽器開啟 `/News` | 建置成功，初始畫面含兩款機型與全部規格，瀏覽器主控台無 JavaScript 錯誤。 |
+| 執行 `dotnet build WebMcpTest/WebMcpTest.csproj`，以瀏覽器開啟 `/News` | 建置成功，初始畫面含三款機型與全部規格，瀏覽器主控台無 JavaScript 錯誤。 |
 | 鍵盤操作核取方塊，篩到一款機型並保留「共同特色」 | 表格只顯示該機型，`colspan` 為 `1`，最後一個勾選項不可取消，狀態區反映結果。 |
-| 檢查手機窄版，再按「顯示完整規格」 | 可水平捲動閱讀；恢復後全部核取方塊已勾選，`colspan` 為 `2`。 |
+| 檢查手機窄版，再按「顯示完整規格」 | 可水平捲動閱讀；恢復後全部核取方塊已勾選，`colspan` 為 `3`。 |
 | 使用未啟用 WebMCP 的瀏覽器，以及停用 JavaScript 的瀏覽器 | 前者可手動篩選，後者可閱讀完整比較表。 |
-| 在 HTTPS 的 WebMCP 支援環境開啟 Tool Inspector | `/News` 可發現兩個唯讀工具和一個畫面操作工具。 |
-| 指定 Pro Max 與重量，再只送 `criteria`；最後傳入 `{}` | 先顯示單一機型，第二次恢復兩款機型並套用新的規格，第三次恢復完整表格。各次回傳順序與畫面一致，手動控制可接續操作。 |
+| 在 HTTPS 的 WebMCP 支援環境開啟 Tool Inspector | `/News` 可發現四個唯讀工具和一個畫面操作工具。 |
+| 指定 Pro Max 與重量，再只送 `criteria`；最後傳入 `{}` | 先顯示單一機型，第二次恢復三款機型並套用新的規格，第三次恢復完整表格。各次回傳順序與畫面一致，手動控制可接續操作。 |
 | 分別傳入未知欄位、未知識別碼、空陣列或重複值 | 直接驗證 callback 時回傳 `invalid_input`。經宿主呼叫時，可由宿主先拒絕或由 callback 回傳錯誤。兩種情況皆保留原畫面與控制狀態。 |
 | 透過 `executeTool()` 的 `signal` 在套用前取消 | 呼叫端收到 Promise rejection，畫面與控制狀態保留。 |
 | 篩選後呼叫原有查詢工具，再重新整理頁面 | 查詢依原契約回傳；重新整理後回復完整比較表。 |
-| 對 agent 說「兩款影片播放時間差多少？」 | agent 使用唯讀工具取數據，畫面保持當前的顯示設定。 |
-| 對 agent 說「兩款都保留，只顯示重量和影片播放時間」 | agent 呼叫畫面操作工具，表格保留兩款機型與指定兩列，控制項和回傳值皆與畫面一致。 |
+| 對 agent 說「Pro 與 Pro Max 的影片播放時間差多少？」 | agent 使用唯讀工具取數據，畫面保持當前的顯示設定。 |
+| 對 agent 說「只保留 Pro 與 Duo，顯示重量和影片播放時間」 | agent 呼叫畫面操作工具，表格保留 Pro 與 Duo 及指定兩列，控制項和回傳值皆與畫面一致。 |
+| 以 Duo、Pro 的反序查詢三款比較工具 | 依表格順序回傳 Pro、Duo；Duo 的內外螢幕與續航資料各自保留，畫面不變。 |
 
 ## 6. 參考資料
 

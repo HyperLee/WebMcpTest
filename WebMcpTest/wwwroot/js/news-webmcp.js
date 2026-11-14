@@ -103,29 +103,29 @@
         }
     };
 
+    const arraySchema = (ids, description) => ({
+        type: "array",
+        description,
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", enum: ids }
+    });
+    const validSelection = (selection, allowed) =>
+        Array.isArray(selection) &&
+        selection.length > 0 &&
+        new Set(selection).size === selection.length &&
+        Array.from(selection).every((id) => allowed.includes(id));
+
     if (comparisonView) {
         const { apply, allModels, allCriteria } = comparisonView;
-        const arraySchema = (ids, description) => ({
-            type: "array",
-            description,
-            minItems: 1,
-            uniqueItems: true,
-            items: { type: "string", enum: ids }
-        });
-        const validSelection = (selection, allowed) =>
-            Array.isArray(selection) &&
-            selection.length > 0 &&
-            new Set(selection).size === selection.length &&
-            Array.from(selection).every((id) => allowed.includes(id));
-
         void register({
             name: "set-iphone18-comparison-view",
-            title: "自訂 iPhone 18 Pro 規格比較畫面",
-            description: "更新目前頁面比較表所顯示的機型與規格。省略任一欄位會顯示該組全部選項，傳入空物件可恢復完整比較表。",
+            title: "自訂 iPhone 18 Pro、Pro Max 與 Duo 比較畫面",
+            description: "更新目前比較表顯示的機型與規格，可選 iPhone 18 Pro、Pro Max 與 Duo。省略任一欄位會顯示該組全部選項，傳入空物件可恢復完整比較表。",
             inputSchema: {
                 type: "object",
                 properties: {
-                    models: arraySchema(allModels, "畫面要顯示的機型。省略時顯示兩款。"),
+                    models: arraySchema(allModels, "畫面要顯示的機型。省略時顯示三款。"),
                     criteria: arraySchema(allCriteria, "畫面要顯示的規格。省略時顯示全部規格。")
                 },
                 additionalProperties: false
@@ -274,6 +274,19 @@
         })
     };
 
+    const proComparisonCriteria = [
+        "displaySizeInches",
+        "displayResolution",
+        "weightGrams",
+        "storageOptionsGb",
+        "typicalUseHours",
+        "videoPlaybackHours",
+        "streamedVideoPlaybackHours",
+        "cameraSummary",
+        "chip",
+        "finishes"
+    ];
+
     const comparisonTool = {
         name: "compare-iphone18-pro-models",
         title: "比較 iPhone 18 Pro 與 Pro Max",
@@ -292,18 +305,7 @@
 
             return {
                 type: "iphone18-pro-comparison",
-                criteria: [
-                    "displaySizeInches",
-                    "displayResolution",
-                    "weightGrams",
-                    "storageOptionsGb",
-                    "typicalUseHours",
-                    "videoPlaybackHours",
-                    "streamedVideoPlaybackHours",
-                    "cameraSummary",
-                    "chip",
-                    "finishes"
-                ],
+                criteria: [...proComparisonCriteria],
                 models: clone(newsData.models),
                 officialLinks: clone(newsData.officialLinks)
             };
@@ -312,4 +314,78 @@
 
     void register(overviewTool);
     void register(comparisonTool);
+
+    const duoDataElement = document.getElementById("duo-news-data");
+    if (!duoDataElement) {
+        console.warn("WebMCP iPhone Duo data element is unavailable.");
+        return;
+    }
+
+    let duoData;
+    try {
+        duoData = JSON.parse(duoDataElement.textContent);
+    } catch (error) {
+        console.warn("WebMCP iPhone Duo data could not be parsed.", error);
+        return;
+    }
+
+    void register({
+        name: "get-iphone-duo-overview",
+        title: "查詢 iPhone Duo 摘要",
+        description: "取得 iPhone Duo 的台灣上市時程、可摺疊設計、內外螢幕規格及個別續航。",
+        inputSchema: comparisonSchema,
+        annotations: readOnlyAnnotations,
+        execute: (input, options) => executeWithAbort(options?.signal, () => {
+            if (!isObject(input) || Object.keys(input).length > 0) {
+                return invalidInputResult("請傳入空物件 {}。");
+            }
+
+            return {
+                type: "iphone-duo-overview",
+                announcementDate: duoData.announcementDate,
+                lastVerifiedDate: duoData.lastVerifiedDate,
+                summary: duoData.summary,
+                highlights: clone(duoData.highlights),
+                release: clone(duoData.release),
+                models: clone(duoData.models),
+                officialLinks: clone(duoData.officialLinks)
+            };
+        })
+    });
+
+    const comparisonModels = [...newsData.models, ...duoData.models];
+    const comparisonModelIds = comparisonModels.map((model) => model.id);
+    const comparisonCriteria = ["dimensions", ...proComparisonCriteria, "sharedFeatures"];
+
+    void register({
+        name: "compare-iphone-models",
+        title: "查詢 iPhone 18 Pro、Pro Max 與 Duo 規格比較",
+        description: "比較指定的 iPhone 18 Pro、Pro Max 或 Duo。省略機型時查詢三款；Duo 的內外螢幕尺寸、解析度與播放時間分別列在 displays。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                models: arraySchema(comparisonModelIds, "要查詢的機型。省略時回傳三款。")
+            },
+            additionalProperties: false
+        },
+        annotations: readOnlyAnnotations,
+        execute: (input, options) => executeWithAbort(options?.signal, () => {
+            if (!isObject(input) || hasUnexpectedKeys(input, ["models"])) {
+                return invalidInputResult("請傳入物件，且只可指定 models。");
+            }
+
+            const models = Object.hasOwn(input, "models") ? input.models : comparisonModelIds;
+            if (!validSelection(models, comparisonModelIds)) {
+                return invalidInputResult("models 必須是非空陣列，並包含有效且不重複的機型識別碼。");
+            }
+
+            return {
+                type: "iphone-comparison",
+                criteria: [...comparisonCriteria],
+                models: clone(comparisonModels.filter((model) => models.includes(model.id))),
+                sharedFeatures: clone(newsData.sharedFeatures),
+                officialLinks: clone([...newsData.officialLinks, ...duoData.officialLinks])
+            };
+        })
+    });
 })();

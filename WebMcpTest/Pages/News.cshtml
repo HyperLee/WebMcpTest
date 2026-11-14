@@ -1,26 +1,27 @@
 @page
 @model NewsPageModel
 @{
-    ViewData["Title"] = Model.Article.Title;
-    ViewData["PageTitle"] = Model.Article.Title;
+    ViewData["Title"] = "iPhone 18 Pro 系列與 iPhone Duo";
+    ViewData["PageTitle"] = ViewData["Title"];
     ViewData["PageLanguage"] = "zh-Hant-TW";
 }
 
 <article class="news-page">
     <script id="news-data" type="application/json">@Html.Raw(Model.SerializedArticle)</script>
+    <script id="duo-news-data" type="application/json">@Html.Raw(Model.SerializedDuoArticle)</script>
 
     <header class="news-hero">
         <p class="news-eyebrow">Apple 官方新聞摘要</p>
-        <h1>@Model.Article.Title</h1>
+        <h1>@ViewData["Title"]</h1>
         <p class="news-summary">@Model.Article.Summary</p>
-        <p class="news-scope">@Model.Article.ScopeNote</p>
+        <p class="news-scope">@Model.DuoArticle.Summary</p>
         <dl class="news-meta">
             <div>
-                <dt>公告日期</dt>
+                <dt>Pro 系列公告日期</dt>
                 <dd>@Model.Article.AnnouncementDate.Replace('-', '/')</dd>
             </div>
             <div>
-                <dt>最後核對</dt>
+                <dt>Pro 系列最後核對</dt>
                 <dd>@Model.Article.LastVerifiedDate.Replace('-', '/')</dd>
             </div>
         </dl>
@@ -29,7 +30,7 @@
     <section aria-labelledby="highlights-heading">
         <h2 id="highlights-heading">主要亮點</h2>
         <div class="news-highlight-grid">
-            @foreach (var highlight in Model.Article.Highlights)
+            @foreach (var highlight in Model.Article.Highlights.Concat(Model.DuoArticle.Highlights))
             {
                 <article class="news-card">
                     <h3>@highlight.Title</h3>
@@ -57,13 +58,13 @@
                 <p aria-live="polite" aria-atomic="true" data-comparison-status></p>
             </div>
         </div>
-        <div class="news-table-scroll" tabindex="0" aria-label="iPhone 18 Pro 系列比較表，可水平捲動">
+        <div class="news-table-scroll" tabindex="0" aria-label="iPhone 主要規格比較表，可水平捲動">
             <table class="news-comparison-table">
-                <caption>iPhone 18 Pro 與 iPhone 18 Pro Max 主要規格比較</caption>
+                <caption>iPhone 18 Pro、iPhone 18 Pro Max 與 iPhone Duo 規格比較</caption>
                 <thead>
                     <tr>
                         <th scope="col">規格</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <th scope="col" data-comparison-model="@product.Id">@product.Name</th>
                         }
@@ -72,84 +73,139 @@
                 <tbody>
                     <tr data-comparison-criterion="dimensions">
                         <th scope="row">尺寸</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">@product.Dimensions</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="displaySizeInches">
                         <th scope="row">螢幕尺寸</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
-                            <td data-comparison-model="@product.Id">@product.DisplaySizeInches 吋 Super Retina XDR；ProMotion 最高 120Hz</td>
+                            <td data-comparison-model="@product.Id">
+                                @if (product.Displays is { } displays)
+                                {
+                                    @foreach (var display in displays)
+                                    {
+                                        <div>@display.Label @display.DisplaySizeInches 吋</div>
+                                    }
+                                    <div>Super Retina XDR，ProMotion 最高 120Hz</div>
+                                }
+                                else
+                                {
+                                    <text>@product.DisplaySizeInches 吋 Super Retina XDR；ProMotion 最高 120Hz</text>
+                                }
+                            </td>
                         }
                     </tr>
                     <tr data-comparison-criterion="displayResolution">
                         <th scope="row">顯示器解析度</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
-                            <td data-comparison-model="@product.Id">@product.DisplayResolution</td>
+                            <td data-comparison-model="@product.Id">
+                                @if (product.Displays is { } displays)
+                                {
+                                    @foreach (var display in displays)
+                                    {
+                                        <div>@display.Label @display.DisplayResolution</div>
+                                    }
+                                }
+                                else
+                                {
+                                    <text>@product.DisplayResolution</text>
+                                }
+                            </td>
                         }
                     </tr>
                     <tr data-comparison-criterion="weightGrams">
                         <th scope="row">重量</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">@product.WeightGrams g</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="storageOptionsGb">
                         <th scope="row">容量</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">@string.Join("、", product.StorageOptionsGb.Select(value => value + "GB"))</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="typicalUseHours">
                         <th scope="row">一般使用</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">最高 @product.TypicalUseHours 小時</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="videoPlaybackHours">
                         <th scope="row">影片播放</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
-                            <td data-comparison-model="@product.Id">最高 @product.VideoPlaybackHours 小時</td>
+                            <td data-comparison-model="@product.Id">
+                                @if (product.Displays is { } displays)
+                                {
+                                    @foreach (var display in displays)
+                                    {
+                                        <div>@(display.Label)最高 @display.VideoPlaybackHours 小時</div>
+                                    }
+                                }
+                                else
+                                {
+                                    <text>最高 @product.VideoPlaybackHours 小時</text>
+                                }
+                            </td>
                         }
                     </tr>
                     <tr data-comparison-criterion="streamedVideoPlaybackHours">
                         <th scope="row">串流影片播放</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
-                            <td data-comparison-model="@product.Id">最高 @product.StreamedVideoPlaybackHours 小時</td>
+                            <td data-comparison-model="@product.Id">
+                                @if (product.Displays is { } displays)
+                                {
+                                    @foreach (var display in displays)
+                                    {
+                                        <div>@(display.Label)最高 @display.StreamedVideoPlaybackHours 小時</div>
+                                    }
+                                }
+                                else
+                                {
+                                    <text>最高 @product.StreamedVideoPlaybackHours 小時</text>
+                                }
+                            </td>
                         }
                     </tr>
                     <tr data-comparison-criterion="cameraSummary">
                         <th scope="row">相機</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
-                            <td data-comparison-model="@product.Id">@product.CameraSummary</td>
+                            <td data-comparison-model="@product.Id">
+                                @product.CameraSummary
+                                @if (product.FrontCameraSummary is { } frontCamera)
+                                {
+                                    <div>@frontCamera</div>
+                                }
+                            </td>
                         }
                     </tr>
                     <tr data-comparison-criterion="chip">
                         <th scope="row">晶片</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">@product.Chip</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="finishes">
                         <th scope="row">外觀</th>
-                        @foreach (var product in Model.Article.Models)
+                        @foreach (var product in Model.ComparisonModels)
                         {
                             <td data-comparison-model="@product.Id">@string.Join("、", product.Finishes)</td>
                         }
                     </tr>
                     <tr data-comparison-criterion="sharedFeatures">
                         <th scope="row">共同特色</th>
-                        <td colspan="@Model.Article.Models.Count">
+                        <td colspan="@Model.ComparisonModels.Count">
                             <ul>
                                 @foreach (var feature in Model.Article.SharedFeatures)
                                 {
@@ -165,6 +221,7 @@
 
     <section aria-labelledby="schedule-heading">
         <h2 id="schedule-heading">重要時程</h2>
+        <h3>iPhone 18 Pro 系列</h3>
         <dl class="news-schedule">
             <div>
                 <dt>官方發表</dt>
@@ -180,12 +237,29 @@
             </div>
         </dl>
         <p class="news-note">@Model.Article.Release.TimezoneNote</p>
+
+        <h3>iPhone Duo</h3>
+        <dl class="news-schedule">
+            <div>
+                <dt>官方發表（美國時間）</dt>
+                <dd>@Model.DuoArticle.AnnouncementDate.Replace('-', '/')</dd>
+            </div>
+            <div>
+                <dt>台灣開放預訂</dt>
+                <dd>@Model.DuoArticle.Release.PreorderDisplay</dd>
+            </div>
+            <div>
+                <dt>台灣開賣</dt>
+                <dd>@Model.DuoArticle.Release.AvailabilityStart.Replace('-', '/')</dd>
+            </div>
+        </dl>
+        <p class="news-note">@Model.DuoArticle.Release.TimezoneNote</p>
     </section>
 
     <section aria-labelledby="links-heading">
         <h2 id="links-heading">官方資料連結</h2>
         <ul class="news-link-list">
-            @foreach (var link in Model.Article.OfficialLinks)
+            @foreach (var link in Model.Article.OfficialLinks.Concat(Model.DuoArticle.OfficialLinks))
             {
                 <li>
                     <a href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Label</a>

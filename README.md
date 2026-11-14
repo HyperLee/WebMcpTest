@@ -1,6 +1,6 @@
 # WebMcpTest
 
-WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 10 建立的 WebMCP 示範專案。專案目前以 **/News** 頁面呈現固定的 iPhone 18 Pro 系列新聞資料，並提供兩個唯讀 WebMCP tool 和一個比較表操作 tool。
+WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 10 建立的 WebMCP 示範專案。專案目前以 **/News** 頁面呈現固定的 iPhone 18 Pro 系列與 iPhone Duo 新聞及規格，並提供四個唯讀 WebMCP 工具與一個比較表操作工具。
 
 本專案的重點不是建立後端 MCP server，而是示範「網頁本身如何提供可被 agent 呼叫的工具」：
 
@@ -13,8 +13,8 @@ WebMcpTest 是一個以 ASP.NET Core Razor Pages 與 .NET 10 建立的 WebMCP �
 
 **/News** 是一個單頁新聞摘要，內容聚焦：
 
-- iPhone 18 Pro 與 iPhone 18 Pro Max 的主要亮點。
-- 兩款機型的尺寸、顯示器、重量、容量、續航、相機、晶片與外觀比較。
+- iPhone 18 Pro、iPhone 18 Pro Max 與 iPhone Duo 的主要亮點。
+- 三款機型的尺寸、顯示器、重量、容量、續航、相機、晶片與外觀比較。
 - Apple 官方發表、預購與供貨時程。
 - Apple 新聞稿、產品頁、技術規格與 WebMCP 官方規格連結。
 
@@ -65,7 +65,7 @@ wwwroot/js/news-webmcp.js
         ├─ 初始化比較表的手動篩選
         └─ 有 WebMCP 註冊能力時
            ├─ 比較表初始化成功後註冊畫面工具
-           └─ 讀取 #news-data 並註冊兩個唯讀工具
+           └─ 讀取 #news-data 與 #duo-news-data 並註冊唯讀工具
 ```
 
 **WebMcpTest/Pages/News.cshtml.cs** 中的 **NewsContent.Article** 是固定新聞資料的單一來源。**NewsPageModel.SerializedArticle** 使用 camelCase JSON 輸出，讓前端 JavaScript 可以直接使用 **announcementDate**、**models**、**officialLinks** 等欄位。
@@ -96,6 +96,8 @@ WebMCP 讓支援的 AI agent 以結構化方式呼叫網頁提供的功能。這
 | --- | --- | --- | --- | --- |
 | **get-iphone18-pro-overview** | 取得 iPhone 18 Pro 系列新聞摘要與機型資料 | 可選的 **model** | **iphone18-pro-overview** | **readOnlyHint: true**、**untrustedContentHint: false**、**consequentialHint: false** |
 | **compare-iphone18-pro-models** | 取得兩款機型的比較資料 | 空物件 **{}** | **iphone18-pro-comparison** | **readOnlyHint: true**、**untrustedContentHint: false**、**consequentialHint: false** |
+| **get-iphone-duo-overview** | 查詢 Duo 摘要、台灣上市資訊與雙螢幕規格 | 空物件 **{}** | **iphone-duo-overview** | **readOnlyHint: true** |
+| **compare-iphone-models** | 查詢三款或指定機型的規格比較 | 可選的 **models** 陣列 | **iphone-comparison** | **readOnlyHint: true** |
 | **set-iphone18-comparison-view** | 設定比較表顯示的機型與規格 | 可選的 **models**、**criteria** 陣列 | **{ models, criteria }** | **readOnlyHint: false**、**untrustedContentHint: false**、**consequentialHint: false** |
 
 每個工具獨立註冊。註冊失敗會記錄工具名稱及錯誤，手動篩選仍可使用。
@@ -183,15 +185,19 @@ WebMCP 讓支援的 AI agent 以結構化方式呼叫網頁提供的功能。這
 
 正常呼叫方式是傳入 **{}**；傳入額外欄位會被拒絕。
 
+### iPhone Duo 與三款比較查詢
+
+`get-iphone-duo-overview` 接受 `{}`。`compare-iphone-models` 的 `{}` 會回傳三款，亦可指定 `{ models: ["iphone-duo", "iphone-18-pro"] }`，結果依表格順序排列。Duo 的 `displays` 提供 `inner`、`outer` 各自的尺寸、解析度、影片播放與串流播放數值。兩個工具都不改變比較畫面。
+
 ### set-iphone18-comparison-view
 
-在「機型」和「規格」下勾選要顯示的項目，每組至少保留一項。按「顯示完整規格」或重新整理頁面，即可恢復兩款機型與全部規格。顯示選擇只存在當前頁面。兩個唯讀工具的回傳範圍獨立於畫面選擇。
+在「機型」和「規格」下勾選要顯示的項目，每組至少保留一項。按「顯示完整規格」或重新整理頁面，即可恢復三款機型與全部規格。顯示選擇只存在當前頁面。唯讀工具的回傳範圍獨立於畫面選擇。
 
 每次呼叫會設定整張比較表。省略的欄位會顯示該組全部選項，`{}` 恢復完整比較表。已指定的欄位必須是非空陣列，識別碼必須有效且不重複。完整識別碼與顯示順序請見 [自訂比較規格](spec/spec2.md)。
 
 ## 執行流程與防禦性處理
 
-**wwwroot/js/news-webmcp.js** 先初始化手動篩選，再檢查 WebMCP 註冊能力。手動操作和畫面工具共用更新函式，同步更新可見欄列、核取方塊、共同特色跨欄數及狀態訊息。兩個唯讀工具直接讀取 **#news-data** 的 JSON。
+**wwwroot/js/news-webmcp.js** 先初始化手動篩選，再檢查 WebMCP 註冊能力。手動操作和畫面工具共用更新函式，同步更新可見欄列、核取方塊、共同特色跨欄數及狀態訊息。唯讀工具使用 Razor 提供的固定 JSON。
 
 工具 callback 內部的錯誤回傳如下。若呼叫端透過 **executeTool(..., { signal })** 取消，**executeTool()** 的 Promise 會 reject；呼叫端應捕捉取消錯誤（通常是 **signal.reason**），不要把它當作工具結果解析。
 
@@ -243,7 +249,7 @@ News 頁面的資料是固定內容，程式不會在執行期間重新抓取 Ap
 
 1. 使用 HTTPS 啟動專案。
 2. 開啟 **https://localhost:7020/News**。
-3. 確認頁面包含主標題、兩款機型、比較表、重要時程與官方連結。
+3. 確認頁面包含主標題、三款機型、比較表、重要時程與官方連結。
 4. 另行開啟 **/** 與 **/Privacy**，確認既有頁面仍可使用。
 5. 開啟瀏覽器 DevTools Console，確認沒有 JavaScript 錯誤。
 
@@ -257,11 +263,13 @@ const tools = await document.modelContext.getTools();
 tools.map((tool) => tool.name);
 ```
 
-`typeof document.modelContext` 預期為 `"object"`，工具名稱應包含下列三個；目前 Chrome 的回傳順序為字母排序：
+`typeof document.modelContext` 預期為 `"object"`，工具名稱應包含下列五個；目前 Chrome 的回傳順序為字母排序：
 
 ```text
 [
+  "compare-iphone-models",
   "compare-iphone18-pro-models",
+  "get-iphone-duo-overview",
   "get-iphone18-pro-overview",
   "set-iphone18-comparison-view"
 ]
@@ -336,19 +344,19 @@ runningAbortReason === runningController.signal.reason; // true
 
 ### 比較畫面驗證
 
-在支援 WebMCP 的 Chrome 中使用 HTTPS 開啟 **/News**，確認 Tool Inspector 列出三個工具。接續上方的 `tools` 和 `parseToolResult` 執行：
+在支援 WebMCP 的 Chrome 中使用 HTTPS 開啟 **/News**，確認 Tool Inspector 列出五個工具。接續上方的 `tools` 和 `parseToolResult` 執行：
 
 ```javascript
 const view = tools.find((tool) => tool.name === "set-iphone18-comparison-view");
 const applyView = async (input) =>
   parseToolResult(await document.modelContext.executeTool(view, input));
 
-await applyView({ models: ["iphone-18-pro-max"], criteria: ["weightGrams"] });
+await applyView({ models: ["iphone-duo"], criteria: ["weightGrams"] });
 await applyView({ criteria: ["videoPlaybackHours", "weightGrams"] });
 await applyView({});
 ```
 
-第二次呼叫應恢復兩款機型，並依序顯示和回傳重量、影片播放。用鍵盤改選單一機型並保留「共同特色」，確認該列跨欄數為 1，重設後為 2。手機寬度下可水平捲動表格。停用 WebMCP 時手動篩選仍可用，停用 JavaScript 時仍可閱讀完整表格。
+第二次呼叫應恢復三款機型，並依序顯示和回傳重量、影片播放。用鍵盤改選單一機型並保留「共同特色」，確認該列跨欄數為 1，重設後為 3。手機寬度下可水平捲動表格。停用 WebMCP 時手動篩選仍可用，停用 JavaScript 時仍可閱讀完整表格。
 
 驗證錯誤與取消時，先記下畫面的篩選狀態。傳入未知欄位、未知識別碼、空陣列或重複值，應由宿主拒絕或收到 callback 的 `invalid_input`。用已取消的 signal 呼叫 `executeTool(view, input, { signal })` 應收到 Promise rejection。每次都要核對畫面仍維持呼叫前的狀態。
 
