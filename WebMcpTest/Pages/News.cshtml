@@ -41,6 +41,22 @@
 
     <section aria-labelledby="comparison-heading">
         <h2 id="comparison-heading">機型比較</h2>
+        <div class="news-comparison-controls" hidden>
+            <div class="news-comparison-options">
+                <fieldset>
+                    <legend>機型</legend>
+                    <div class="news-comparison-checkboxes" data-comparison-options="models"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>規格</legend>
+                    <div class="news-comparison-checkboxes" data-comparison-options="criteria"></div>
+                </fieldset>
+            </div>
+            <div class="news-comparison-actions">
+                <button type="button" class="btn btn-outline-primary" data-comparison-reset>顯示完整規格</button>
+                <p aria-live="polite" aria-atomic="true" data-comparison-status></p>
+            </div>
+        </div>
         <div class="news-table-scroll" tabindex="0" aria-label="iPhone 18 Pro 系列比較表，可水平捲動">
             <table class="news-comparison-table">
                 <caption>iPhone 18 Pro 與 iPhone 18 Pro Max 主要規格比較</caption>
@@ -49,84 +65,91 @@
                         <th scope="col">規格</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <th scope="col">@product.Name</th>
+                            <th scope="col" data-comparison-model="@product.Id">@product.Name</th>
                         }
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
+                    <tr data-comparison-criterion="dimensions">
                         <th scope="row">尺寸</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@product.Dimensions</td>
+                            <td data-comparison-model="@product.Id">@product.Dimensions</td>
                         }
                     </tr>
-                    <tr>
-                        <th scope="row">顯示器</th>
+                    <tr data-comparison-criterion="displaySizeInches">
+                        <th scope="row">螢幕尺寸</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@product.DisplaySizeInches 吋 Super Retina XDR；@product.DisplayResolution；ProMotion 最高 120Hz</td>
+                            <td data-comparison-model="@product.Id">@product.DisplaySizeInches 吋 Super Retina XDR；ProMotion 最高 120Hz</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="displayResolution">
+                        <th scope="row">顯示器解析度</th>
+                        @foreach (var product in Model.Article.Models)
+                        {
+                            <td data-comparison-model="@product.Id">@product.DisplayResolution</td>
+                        }
+                    </tr>
+                    <tr data-comparison-criterion="weightGrams">
                         <th scope="row">重量</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@product.WeightGrams g</td>
+                            <td data-comparison-model="@product.Id">@product.WeightGrams g</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="storageOptionsGb">
                         <th scope="row">容量</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@string.Join("、", product.StorageOptionsGb.Select(value => value + "GB"))</td>
+                            <td data-comparison-model="@product.Id">@string.Join("、", product.StorageOptionsGb.Select(value => value + "GB"))</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="typicalUseHours">
                         <th scope="row">一般使用</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>最高 @product.TypicalUseHours 小時</td>
+                            <td data-comparison-model="@product.Id">最高 @product.TypicalUseHours 小時</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="videoPlaybackHours">
                         <th scope="row">影片播放</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>最高 @product.VideoPlaybackHours 小時</td>
+                            <td data-comparison-model="@product.Id">最高 @product.VideoPlaybackHours 小時</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="streamedVideoPlaybackHours">
                         <th scope="row">串流影片播放</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>最高 @product.StreamedVideoPlaybackHours 小時</td>
+                            <td data-comparison-model="@product.Id">最高 @product.StreamedVideoPlaybackHours 小時</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="cameraSummary">
                         <th scope="row">相機</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@product.CameraSummary</td>
+                            <td data-comparison-model="@product.Id">@product.CameraSummary</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="chip">
                         <th scope="row">晶片</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@product.Chip</td>
+                            <td data-comparison-model="@product.Id">@product.Chip</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="finishes">
                         <th scope="row">外觀</th>
                         @foreach (var product in Model.Article.Models)
                         {
-                            <td>@string.Join("、", product.Finishes)</td>
+                            <td data-comparison-model="@product.Id">@string.Join("、", product.Finishes)</td>
                         }
                     </tr>
-                    <tr>
+                    <tr data-comparison-criterion="sharedFeatures">
                         <th scope="row">共同特色</th>
-                        <td colspan="2">
+                        <td colspan="@Model.Article.Models.Count">
                             <ul>
                                 @foreach (var feature in Model.Article.SharedFeatures)
                                 {
