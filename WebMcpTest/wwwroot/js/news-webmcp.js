@@ -63,15 +63,16 @@
         };
 
         const selectedIds = (choices) => choices.filter((choice) => choice.checked).map((choice) => choice.value);
-        const restore = () => apply({ models: allModels, criteria: allCriteria });
-        controls.addEventListener("change", () => apply({
+        const readSelection = () => ({
             models: selectedIds(modelChoices),
             criteria: selectedIds(criterionChoices)
-        }));
+        });
+        const restore = () => apply({ models: allModels, criteria: allCriteria });
+        controls.addEventListener("change", () => apply(readSelection()));
         reset.addEventListener("click", restore);
         restore();
         controls.hidden = false;
-        return { apply, allModels, allCriteria };
+        return { apply, readSelection, allModels, allCriteria };
     };
 
     const comparisonView = initializeComparisonView();
@@ -116,8 +117,19 @@
         new Set(selection).size === selection.length &&
         Array.from(selection).every((id) => allowed.includes(id));
 
+    const emptyObjectSchema = {
+        type: "object",
+        properties: {},
+        additionalProperties: false
+    };
+    const readOnlyAnnotations = {
+        readOnlyHint: true,
+        untrustedContentHint: false,
+        consequentialHint: false
+    };
+
     if (comparisonView) {
-        const { apply, allModels, allCriteria } = comparisonView;
+        const { apply, readSelection, allModels, allCriteria } = comparisonView;
         void register({
             name: "set-iphone18-comparison-view",
             title: "自訂 iPhone 18 Pro、Pro Max 與 Duo 比較畫面",
@@ -159,6 +171,91 @@
                     return abortedResult();
                 }
                 return apply(selection);
+            }
+        });
+
+        void register({
+            name: "get-iphone-comparison-view",
+            title: "讀取目前 iPhone 比較畫面",
+            description: "回傳目前比較畫面選擇的機型與規格識別碼。",
+            inputSchema: emptyObjectSchema,
+            annotations: readOnlyAnnotations,
+            execute: async (input, options) => {
+                if (!isObject(input) || Object.keys(input).length !== 0) {
+                    return invalidInputResult("讀取比較畫面不接受任何欄位，請傳入空物件 {}。");
+                }
+
+                if (options?.signal?.aborted) {
+                    return abortedResult();
+                }
+                return readSelection();
+            }
+        });
+
+        const patchProperties = {
+            addModels: arraySchema(allModels, "要加入的機型。"),
+            removeModels: arraySchema(allModels, "要移除的機型。"),
+            addCriteria: arraySchema(allCriteria, "要加入的規格。"),
+            removeCriteria: arraySchema(allCriteria, "要移除的規格。")
+        };
+        const patchSelection = (allIds, selected, added, removed) => allIds.filter((id) =>
+            added.has(id) || (selected.includes(id) && !removed.has(id)));
+
+        void register({
+            name: "update-iphone-comparison-view",
+            title: "局部更新 iPhone 比較畫面",
+            description: "只新增或移除指定的機型或規格，保留其餘選擇並回傳更新後的比較畫面。",
+            inputSchema: {
+                type: "object",
+                properties: patchProperties,
+                minProperties: 1,
+                additionalProperties: false
+            },
+            annotations: { readOnlyHint: false, consequentialHint: false, untrustedContentHint: false },
+            execute: async (input, options) => {
+                const allowedFields = Object.keys(patchProperties).join("、");
+                if (!isObject(input) || Object.keys(input).length === 0) {
+                    return invalidInputResult(`請傳入物件，並指定至少一個欄位：${allowedFields}。`);
+                }
+
+                const changes = new Map();
+                for (const [field, ids] of Object.entries(input)) {
+                    if (!Object.hasOwn(patchProperties, field)) {
+                        return invalidInputResult(`未定義欄位：${field}。請只使用 ${allowedFields}。`);
+                    }
+                    if (!validSelection(ids, patchProperties[field].items.enum)) {
+                        return invalidInputResult(`${field} 必須是非空陣列，請使用有效且不重複的識別碼。`);
+                    }
+                    changes.set(field, new Set(ids));
+                }
+
+                const noChanges = new Set();
+                const addModels = changes.get("addModels") ?? noChanges;
+                const removeModels = changes.get("removeModels") ?? noChanges;
+                const addCriteria = changes.get("addCriteria") ?? noChanges;
+                const removeCriteria = changes.get("removeCriteria") ?? noChanges;
+                if ([...addModels].some((id) => removeModels.has(id))) {
+                    return invalidInputResult("addModels 與 removeModels 不可包含同一機型，請將該識別碼只放在其中一個欄位。");
+                }
+                if ([...addCriteria].some((id) => removeCriteria.has(id))) {
+                    return invalidInputResult("addCriteria 與 removeCriteria 不可包含同一規格，請將該識別碼只放在其中一個欄位。");
+                }
+
+                // 以當下選擇計算整批結果，允許移除最後一項並在同次呼叫加入替代項目。
+                const current = readSelection();
+                const models = patchSelection(allModels, current.models, addModels, removeModels);
+                const criteria = patchSelection(allCriteria, current.criteria, addCriteria, removeCriteria);
+                if (models.length === 0) {
+                    return invalidInputResult("更新後至少要顯示一款機型，請少移除一款或用 addModels 加入另一款。");
+                }
+                if (criteria.length === 0) {
+                    return invalidInputResult("更新後至少要顯示一項規格，請少移除一項或用 addCriteria 加入另一項。");
+                }
+
+                if (options?.signal?.aborted) {
+                    return abortedResult();
+                }
+                return apply({ models, criteria });
             }
         });
     }
@@ -225,18 +322,6 @@
         additionalProperties: false
     };
 
-    const comparisonSchema = {
-        type: "object",
-        properties: {},
-        additionalProperties: false
-    };
-
-    const readOnlyAnnotations = {
-        readOnlyHint: true,
-        untrustedContentHint: false,
-        consequentialHint: false
-    };
-
     const overviewTool = {
         name: "get-iphone18-pro-overview",
         title: "查詢 iPhone 18 Pro 系列摘要",
@@ -291,7 +376,7 @@
         name: "compare-iphone18-pro-models",
         title: "比較 iPhone 18 Pro 與 Pro Max",
         description: "讀取本頁固定的 iPhone 18 Pro 與 iPhone 18 Pro Max 官方比較資料。",
-        inputSchema: comparisonSchema,
+        inputSchema: emptyObjectSchema,
         annotations: readOnlyAnnotations,
         execute: (inputObject, options) => executeWithAbort(options?.signal, () => {
             const input = inputObject ?? {};
@@ -333,7 +418,7 @@
         name: "get-iphone-duo-overview",
         title: "查詢 iPhone Duo 摘要",
         description: "取得 iPhone Duo 的台灣上市時程、可摺疊設計、內外螢幕規格及個別續航。",
-        inputSchema: comparisonSchema,
+        inputSchema: emptyObjectSchema,
         annotations: readOnlyAnnotations,
         execute: (input, options) => executeWithAbort(options?.signal, () => {
             if (!isObject(input) || Object.keys(input).length > 0) {

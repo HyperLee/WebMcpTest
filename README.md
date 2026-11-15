@@ -99,6 +99,8 @@ WebMCP 讓支援的 AI agent 以結構化方式呼叫網頁提供的功能。這
 | **get-iphone-duo-overview** | 查詢 Duo 摘要、台灣上市資訊與雙螢幕規格 | 空物件 **{}** | **iphone-duo-overview** | **readOnlyHint: true** |
 | **compare-iphone-models** | 查詢三款或指定機型的規格比較 | 可選的 **models** 陣列 | **iphone-comparison** | **readOnlyHint: true** |
 | **set-iphone18-comparison-view** | 設定比較表顯示的機型與規格 | 可選的 **models**、**criteria** 陣列 | **{ models, criteria }** | **readOnlyHint: false**、**untrustedContentHint: false**、**consequentialHint: false** |
+| **get-iphone-comparison-view** | 讀取比較表目前顯示的機型與規格 | 空物件 **{}** | **{ models, criteria }** | **readOnlyHint: true**、**untrustedContentHint: false**、**consequentialHint: false** |
+| **update-iphone-comparison-view** | 局部新增或移除比較表上的機型與規格 | **addModels**、**removeModels**、**addCriteria**、**removeCriteria** 至少一欄 | **{ models, criteria }** | **readOnlyHint: false**、**untrustedContentHint: false**、**consequentialHint: false** |
 
 每個工具獨立註冊。註冊失敗會記錄工具名稱及錯誤，手動篩選仍可使用。
 
@@ -191,13 +193,21 @@ WebMCP 讓支援的 AI agent 以結構化方式呼叫網頁提供的功能。這
 
 ### set-iphone18-comparison-view
 
-在「機型」和「規格」下勾選要顯示的項目，每組至少保留一項。按「顯示完整規格」或重新整理頁面，即可恢復三款機型與全部規格。顯示選擇只存在當前頁面。唯讀工具的回傳範圍獨立於畫面選擇。
+在「機型」和「規格」下勾選要顯示的項目，每組至少保留一項。按「顯示完整規格」或重新整理頁面，即可恢復三款機型與全部規格。顯示選擇只存在當前頁面。新聞與規格查詢工具的回傳範圍獨立於畫面選擇。
 
 每次呼叫會設定整張比較表。省略的欄位會顯示該組全部選項，`{}` 恢復完整比較表。已指定的欄位必須是非空陣列，識別碼必須有效且不重複。完整識別碼與顯示順序請見 [自訂比較規格](spec/spec2.md)。
 
+### 讀取與局部更新比較畫面
+
+`get-iphone-comparison-view` 接受 `{}`，回傳目前選擇的快照。手動勾選、重設或執行畫面工具後，下次讀取會反映新的選擇。兩組識別碼皆依表格順序排列。
+
+`update-iphone-comparison-view` 以執行當下的選擇為基準，只處理傳入的欄位。例如 `{ addCriteria: ["streamedVideoPlaybackHours"] }` 會加入「串流影片播放」，保留原有機型與其他規格。每個欄位必須是非空陣列，且只包含有效、不重複的識別碼。
+
+重複加入已顯示的項目，或移除已隱藏的項目，仍會成功。可在同次呼叫替換某一組的最後一項。若在同一組同時新增和移除相同識別碼，或更新後有任何一組為空，整批拒絕，畫面維持原樣。完整契約見 [比較畫面讀取與局部更新規格](spec/spec3.md)。
+
 ## 執行流程與防禦性處理
 
-**wwwroot/js/news-webmcp.js** 先初始化手動篩選，再檢查 WebMCP 註冊能力。手動操作和畫面工具共用更新函式，同步更新可見欄列、核取方塊、共同特色跨欄數及狀態訊息。唯讀工具使用 Razor 提供的固定 JSON。
+**wwwroot/js/news-webmcp.js** 先初始化手動篩選，再檢查 WebMCP 註冊能力。手動操作和畫面工具共用更新函式，同步更新可見欄列、核取方塊、共同特色跨欄數及狀態訊息。四個新聞與規格查詢工具使用 Razor 提供的固定 JSON，畫面讀取工具則從核取方塊取得目前選擇。
 
 工具 callback 內部的錯誤回傳如下。若呼叫端透過 **executeTool(..., { signal })** 取消，**executeTool()** 的 Promise 會 reject；呼叫端應捕捉取消錯誤（通常是 **signal.reason**），不要把它當作工具結果解析。
 
@@ -260,18 +270,20 @@ News 頁面的資料是固定內容，程式不會在執行期間重新抓取 Ap
 ```javascript
 typeof document.modelContext;
 const tools = await document.modelContext.getTools();
-tools.map((tool) => tool.name);
+tools.map((tool) => tool.name).sort();
 ```
 
-`typeof document.modelContext` 預期為 `"object"`，工具名稱應包含下列五個；目前 Chrome 的回傳順序為字母排序：
+`typeof document.modelContext` 預期為 `"object"`。將工具名稱排序後，應得到下列七個名稱。
 
 ```text
 [
   "compare-iphone-models",
   "compare-iphone18-pro-models",
+  "get-iphone-comparison-view",
   "get-iphone-duo-overview",
   "get-iphone18-pro-overview",
-  "set-iphone18-comparison-view"
+  "set-iphone18-comparison-view",
+  "update-iphone-comparison-view"
 ]
 ```
 
@@ -344,7 +356,7 @@ runningAbortReason === runningController.signal.reason; // true
 
 ### 比較畫面驗證
 
-在支援 WebMCP 的 Chrome 中使用 HTTPS 開啟 **/News**，確認 Tool Inspector 列出五個工具。接續上方的 `tools` 和 `parseToolResult` 執行：
+在支援 WebMCP 的 Chrome 中使用 HTTPS 開啟 **/News**，確認 Tool Inspector 列出七個工具。接續上方的 `tools` 和 `parseToolResult` 驗證完整設定工具。
 
 ```javascript
 const view = tools.find((tool) => tool.name === "set-iphone18-comparison-view");
@@ -359,6 +371,29 @@ await applyView({});
 第二次呼叫應恢復三款機型，並依序顯示和回傳重量、影片播放。用鍵盤改選單一機型並保留「共同特色」，確認該列跨欄數為 1，重設後為 3。手機寬度下可水平捲動表格。停用 WebMCP 時手動篩選仍可用，停用 JavaScript 時仍可閱讀完整表格。
 
 驗證錯誤與取消時，先記下畫面的篩選狀態。傳入未知欄位、未知識別碼、空陣列或重複值，應由宿主拒絕或收到 callback 的 `invalid_input`。用已取消的 signal 呼叫 `executeTool(view, input, { signal })` 應收到 Promise rejection。每次都要核對畫面仍維持呼叫前的狀態。
+
+手動保留 Pro Max、Duo 和「重量」，再執行以下程式。首次讀取應回傳手動選擇。更新後仍顯示同兩款機型，規格依序為 `weightGrams`、`streamedVideoPlaybackHours`，再次讀取應得到相同結果。
+
+```javascript
+const getView = tools.find((tool) => tool.name === "get-iphone-comparison-view");
+const updateView = tools.find((tool) => tool.name === "update-iphone-comparison-view");
+const executeView = async (tool, input, options) =>
+  parseToolResult(await document.modelContext.executeTool(tool, input, options));
+
+await executeView(getView, {});
+await executeView(updateView, { addCriteria: ["streamedVideoPlaybackHours"] });
+await executeView(getView, {});
+```
+
+用以下程式驗證兩個原生工具的取消行為。兩筆結果的 `status` 都應為 `"rejected"`，畫面仍顯示取消前的選擇。直接測試 callback 時，合法輸入搭配已取消的 signal 則應回傳 `error.code === "aborted"`。
+
+```javascript
+const signal = AbortSignal.abort();
+await Promise.allSettled([
+  executeView(getView, {}, { signal }),
+  executeView(updateView, { removeCriteria: ["weightGrams"] }, { signal })
+]);
+```
 
 ## 專案結構
 
@@ -387,6 +422,7 @@ await applyView({});
 
 - [WebMCP 功能規格](spec/spec1.md)
 - [自訂比較畫面規格](spec/spec2.md)
+- [比較畫面讀取與局部更新規格](spec/spec3.md)
 - [News/WebMCP 實作計畫](docs/superpowers/plans/2026-09-10-iphone18-pro-news-webmcp.md)
 - [News PageModel](WebMcpTest/Pages/News.cshtml.cs)
 - [News Razor Page](WebMcpTest/Pages/News.cshtml)
